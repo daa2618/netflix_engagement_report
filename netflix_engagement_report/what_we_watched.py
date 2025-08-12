@@ -274,8 +274,9 @@ class NetflixEngagementReport:
         subplot.update_traces(showlegend = False)
 
         subplot.update_yaxes(tickangle = -45)
-        PlotSaver(subplot, base_path=Path.cwd().parent/"images", file_name = f"netflix_engagement_report_{option}_{self.time_period}", image_type="png", width = 1800, height=1400).save()
-        return self._update_layout_add_source_to_fig(subplot,  f"Netflix Engagement Report - {option.upper()} ({self.time_period})", -0.3, height = 1400, width = 1800)
+        fig = self._update_layout_add_source_to_fig(subplot,  f"Netflix Engagement Report - {option.upper()} ({self.time_period})", -0.3, height = 1400, width = 1800)
+        PlotSaver(fig, base_path=Path.cwd().parent/"images", file_name = f"netflix_engagement_report_{option}_{self.time_period}", image_type="png", width = 1800, height=1400).save()
+        return fig
 
     
         
