@@ -50,8 +50,14 @@ Contributions are welcome! Please open issues or submit pull requests for improv
 - [daa2618](https://github.com/daa2618)
 
 
-
+### Netflix Engagement Report Movies 2025Jan-Jun Hours Viewed
 ![Netflix Engagement Report Movies 2025Jan-Jun Hours Viewed](netflix_engagement_report/images/netflix_engagement_report_movies_2025Jan-Jun_hours_viewed.png)
+
+### Netflix Engagement Report Movies 2025Jan-Jun Views
 ![Netflix Engagement Report Movies 2025Jan-Jun Views](netflix_engagement_report/images/netflix_engagement_report_movies_2025Jan-Jun_views.png)
+
+### Netflix Engagement Report Shows 2025Jan-Jun Hours Viewed
 ![Netflix Engagement Report Shows 2025Jan-Jun Hours Viewed](netflix_engagement_report/images/netflix_engagement_report_shows_2025Jan-Jun_hours_viewed.png)
+
+### Netflix Engagement Report Shows 2025Jan-Jun Views
 ![Netflix Engagement Report Shows 2025Jan-Jun Views](netflix_engagement_report/images/netflix_engagement_report_shows_2025Jan-Jun_views.png)
