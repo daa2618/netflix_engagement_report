@@ -55,7 +55,9 @@ def get_engagement_data(report_url:str)->Optional[Dict[str, Dict[str, pd.DataFra
     data_dir = Path(__file__).resolve().parent/"data"
     file_name = data_dir/f"raw_{time_period}.xlsx"
     data = Dataset(doc_url = data_url).load_data()
-
+    if not data:
+        return
+        
     with pd.ExcelWriter(data_dir/file_name, engine="openpyxl") as writer:
             
             for key, df in data.items():
@@ -63,8 +65,7 @@ def get_engagement_data(report_url:str)->Optional[Dict[str, Dict[str, pd.DataFra
                 
                 df.to_excel(writer, sheet_name=key.lower(), index=False)
 
-    if not data:
-        return
+    
     try:
         #engagement_data = data['Engagement']
         cleaned_out = {}
