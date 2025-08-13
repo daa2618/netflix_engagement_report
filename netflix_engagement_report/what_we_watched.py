@@ -1,7 +1,12 @@
 from pathlib import Path
+import sys
+
+pardir = Path(__file__).resolve().parent
+if str(pardir) not in sys.path:
+    sys.path.insert(0, str(pardir))
+from utils.basic_plots import CategoryPlots, make_subplots, go, PostProcess as plots_post_process
 from helper_tools.request_soup_data.soup import Soup
 from helper_tools.request_soup_data.data_loader import Dataset, PostProcess as data_post_process
-from helper_tools.more_plotly.basic_plots import CategoryPlots, make_subplots, go, PostProcess as plots_post_process
 from helper_tools.more_plotly.save_plot import PlotSaver
 
 import pandas as pd
@@ -113,62 +118,87 @@ class NetflixEngagementReport:
         return self._engagement_data.get(self.time_period).get(option)
     
     #@classmethod
-    def bar_plot_top_titles(self, option:str, top_n:int)->go.Figure:
+    def bar_plot_top_titles(self, option:str, top_n:int, by:str)->go.Figure:
+        by = by.lower()
+        if not self._assert_by_exists(option, by):
+            return
+        
         cat_plots.df = self.get_df_for_option(option).head(top_n)
-        fig = cat_plots.plot_2_dimensional_data(plot_type="Bar", x_var="title", y_var="hours_viewed", orientation="h", show_labels=True)
+        fig = cat_plots.plot_2_dimensional_data(plot_type="Bar", x_var="title", y_var = by, orientation="h", show_labels=True)
         fig.update_layout(yaxis = {'categoryorder' : 'total ascending'})
         return self._update_layout_add_source_to_fig(fig, 
                                                      title = f"Top {top_n} Most Watched Titles",
                                                      y = -0.15)
     
-    def bar_plot_top_shows(self, option:str, top_n:int)->go.Figure:
+    def _assert_by_exists(self, option:str, by:str)->bool:
+        df = self.get_df_for_option(option)
+        by_lower = by.lower()
+        if by_lower not in df.columns:
+            print(f"Column '{by_lower}' does not exist in the dataframe")
+            return False
+        return True
+
+    def bar_plot_top_shows(self, option:str, top_n:int, by:str)->go.Figure:
+
+        by = by.lower()
+        if not self._assert_by_exists(option, by):
+            return
+        
         cat_plots.df = (
             self.get_df_for_option(option)
             .groupby("show_name", 
                     as_index=False,
                     
-                    )["hours_viewed"]
+                    )[by]
             .sum()
-            .sort_values("hours_viewed", 
+            .sort_values(by, 
                         ascending = False
                         )
             .reset_index(drop=True)
             .head(top_n)
             
         )
-
-        fig = cat_plots.plot_2_dimensional_data(plot_type="Bar", x_var="show_name", y_var="hours_viewed", orientation="h", show_labels=True)
+        
+        
+        fig = cat_plots.plot_2_dimensional_data(plot_type="Bar", x_var="show_name", y_var = by, orientation="h", show_labels=True)
         fig.update_layout(yaxis = {'categoryorder' : 'total ascending'})
 
         
         return self._update_layout_add_source_to_fig(fig, 
-                                                     title = f"Top {top_n} most watched shows",
+                                                     title = f"Top {top_n} most watched {option}",
                                                      y = -0.15)
     
 
-
     
-    def plot_total_hours_by_release_year(self, option:str)->go.Figure:
+    def _plot_metric_by_release_year(self, option:str, by:str, metric:str)->go.Figure:
+        metric = metric.lower()
+        if metric not in ["sum", "mean"]:
+            raise KeyError(f"Invalid metric. Choose 'sum' or 'mean'")
+        
+        by = by.lower()
+        if not self._assert_by_exists(option, by):
+            return
+    
         cat_plots.df = self.get_df_for_option(option)
-        fig = cat_plots.group_and_plot(plot_type="Bar", group_by_var="year", group_metric="sum", y_var="hours_viewed")
+        fig = cat_plots.group_and_plot(plot_type="Bar", group_by_var="year", group_metric=metric, y_var = by)
         
         return self._update_layout_add_source_to_fig(fig, 
-                                                     title = "Total hours viewed by release year",
+                                                     title = f"Total {by} by release year" if metric=="sum" else f"Average {by} viewed by release year",
                                                      y = -0.1)
     
 
-    def plot_average_hours_by_release_year(self,option:str)->go.Figure:
-        cat_plots.df = self.get_df_for_option(option)
-        fig = cat_plots.group_and_plot(plot_type="Bar", 
-                                       group_by_var="year", 
-                                       group_metric="mean", 
-                                       y_var="hours_viewed")
-        return self._update_layout_add_source_to_fig(fig, 
-                                                     title = "Average hours viewed by release year",
-                                                     y = -0.1)
+    def plot_average_hours_by_release_year(self, option:str)->go.Figure:
+        return self._plot_metric_by_release_year(option, "hours_viewed", "mean")
     
-
-
+    def plot_total_hours_by_release_year(self, option:str)->go.Figure:
+        return self._plot_metric_by_release_year(option, "hours_viewed", "sum")
+    
+    def plot_average_views_by_release_year(self, option:str)->go.Figure:
+        return self._plot_metric_by_release_year(option, "views", "mean")
+    
+    def plot_total_views_by_release_year(self, option:str)->go.Figure:
+        return self._plot_metric_by_release_year(option, "views", "sum")
+    
 
     def plot_number_of_shows_by_release_month_and_year(self,option:str)->go.Figure:
         cat_plots.df = (
@@ -214,7 +244,8 @@ class NetflixEngagementReport:
         return fig
     
 
-    def subplot_figures(self, option:str, top_n:int=10)->go.Figure:
+    def subplot_figures(self, option:str, by:str, top_n:int=10)->go.Figure:
+        by = by.lower()
         subplot = make_subplots(rows = 3, 
                         cols = 2, 
                         specs = [[{}, {}], 
@@ -225,14 +256,14 @@ class NetflixEngagementReport:
                            f"Top {top_n} Most Watched Titles",
                            "Available globally?",
                             f"Number of released {option} by release month and year",
-                            "Average hours viewed by release year",
-                            "Total hours viewed by release year"
+                            f"Average {by} by release year",
+                            f"Total {by} by release year"
                        ))
-        for trace in self.bar_plot_top_shows(option, top_n).data:
+        for trace in self.bar_plot_top_shows(option, top_n, by).data:
             subplot.add_trace(trace, row = 1, col = 1)
         
 
-        for trace in self.bar_plot_top_titles(option, top_n).data:
+        for trace in self.bar_plot_top_titles(option, top_n, by).data:
             subplot.add_trace(trace, row = 1, col = 2)
 
         #subplot.update_layout(yaxis = {'categoryorder' : 'total ascending'})
@@ -243,13 +274,24 @@ class NetflixEngagementReport:
 
             subplot.add_trace(trace, row = 2, col = 2)
 
-        for trace in self.plot_average_hours_by_release_year(option).data:
+        if by == "hours_viewed":
+            for trace in self.plot_average_hours_by_release_year(option).data:
 
-            subplot.add_trace(trace, row = 3, col = 1)
+                subplot.add_trace(trace, row = 3, col = 1)
 
-        for trace in self.plot_total_hours_by_release_year(option).data:
+            for trace in self.plot_total_hours_by_release_year(option).data:
 
-            subplot.add_trace(trace, row = 3, col = 2)
+                subplot.add_trace(trace, row = 3, col = 2)
+        elif by == "views":
+            for trace in self.plot_average_views_by_release_year(option).data:
+
+                subplot.add_trace(trace, row = 3, col = 1)
+
+            for trace in self.plot_total_views_by_release_year(option).data:
+
+                subplot.add_trace(trace, row = 3, col = 2)
+
+
 
         #subplot = cat_plots._update_layout(subplot, height = 1400, width = 1800, #plot_title="Netflix Engagement Report"
         #                                   )
@@ -259,8 +301,8 @@ class NetflixEngagementReport:
                 subplot.layout[yaxis_name].update(categoryorder='total ascending')
 
 
-        subplot.update_xaxes(title = "Hours Viewed", row = 1, col = 1)
-        subplot.update_xaxes(title = "Hours Viewed", row = 1, col = 2)
+        subplot.update_xaxes(title = f"{by.title()}", row = 1, col = 1)
+        subplot.update_xaxes(title = f"{by.title()}", row = 1, col = 2)
         subplot.update_xaxes(title = "Release Month and Year", row = 2, col = 2)
         subplot.update_xaxes(title = "Release Year", row = 3, col = 1)
         subplot.update_xaxes(title = "Release Year", row = 3, col = 2)
@@ -268,22 +310,25 @@ class NetflixEngagementReport:
         subplot.update_yaxes(title = "Top Shows", row = 1, col = 1)
         subplot.update_yaxes(title = "Top Titles", row = 1, col = 2)
         subplot.update_yaxes(title = "Count of Shows", row = 2, col = 2)
-        subplot.update_yaxes(title = "Average Hours Viewed", row = 3, col = 1)
-        subplot.update_yaxes(title = "Total Hours Viewed", row = 3, col = 2)
+        subplot.update_yaxes(title = f"Average {by.title()}", row = 3, col = 1)
+        subplot.update_yaxes(title = f"Total {by.title()}", row = 3, col = 2)
 
         subplot.update_traces(showlegend = False)
 
         subplot.update_yaxes(tickangle = -45)
-        fig = self._update_layout_add_source_to_fig(subplot,  f"Netflix Engagement Report - {option.upper()} ({self.time_period})", -0.3, height = 1400, width = 1800)
-        PlotSaver(fig, base_path=Path.cwd().parent/"images", file_name = f"netflix_engagement_report_{option}_{self.time_period}", image_type="png", width = 1800, height=1400).save()
+        fig = self._update_layout_add_source_to_fig(subplot,  f"Netflix Engagement Report - {option.upper()} ({self.time_period})<br><sup><b>By {by.upper()}</b></sup>", -0.3, height = 1400, width = 1800)
+        PlotSaver(fig, base_path=pardir/"images", file_name = f"netflix_engagement_report_{option}_{self.time_period}_{by.lower()}", image_type="png", width = 1800, height=1400).save()
         return fig
 
     
-        
 def main(report_url:str)->None:
     engagement_report = NetflixEngagementReport(report_url)
-    for option in engagement_report.available_options:
-        fig = engagement_report.subplot_figures(option)
+    for by in ["hours_viewed", "views"]:
+        for option in engagement_report.available_options:
+            try:
+                fig = engagement_report.subplot_figures(option, by, 10)
+            except:
+                continue
     return
 
 if __name__ == "__main__":
